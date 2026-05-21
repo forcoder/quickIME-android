@@ -40,8 +40,9 @@ fun QuickImeView(
 
         KeyboardLayout(
             onKeyPressed = { key ->
-                handleKeyPress(key, onKeyListener) { code ->
-                    currentCode = code
+                onKeyListener(key)
+                if (key.type == KeyType.Character) {
+                    currentCode = currentCode + key.char.toString()
                 }
             }
         )
@@ -49,18 +50,9 @@ fun QuickImeView(
 }
 
 @Composable
-private fun handleKeyPress(
-    key: KeyEvent,
-    onKeyListener: OnKeyPressed,
-    onCodeChanged: (String) -> Unit
-) {
-    onKeyListener(key)
-}
-
-@Composable
 private fun CandidateBar(
     suggestions: List<CSSuggestion>,
-    onSuggestionSelected: OnSuggestionSelected
+    onSuggestionSelected: OnSuggestionListener
 ) {
     LazyRow(
         modifier = Modifier
@@ -95,8 +87,8 @@ private fun CandidateItem(
 
     Row(
         modifier = Modifier
-            .clickable(onClick = onClick)
             .background(Color(0xFFFAFAFA), RoundedCornerShape(4.dp))
+            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -108,8 +100,7 @@ private fun CandidateItem(
         )
         Text(
             text = text.take(20),
-            fontSize = 14.sp,
-            maxLines = 1
+            fontSize = 14.sp
         )
         Text(
             text = when (source) {
@@ -159,7 +150,7 @@ private fun KeyboardLayout(
             }
         }
 
-        // ZXCVBNM + Backspace
+        // ZXC VBNM + Backspace
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
