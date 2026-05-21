@@ -2,14 +2,15 @@ package com.quickime.android.ime
 
 import android.content.Context
 import android.inputmethodservice.InputMethodService
+import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.ComposeView
+import android.widget.Button
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.wubi.WubiEngine
-import com.quickime.ui.theme.QuickIMETheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +29,6 @@ class QuickImeService : InputMethodService() {
     lateinit var csManager: CustomerServiceManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var currentCode = StringBuilder()
-    private var isComposing = false
 
     override fun onCreate() {
         super.onCreate()
@@ -43,94 +42,98 @@ class QuickImeService : InputMethodService() {
         super.onDestroy()
     }
 
-    override fun onCreateInputView(): android.view.View {
-        return ComposeView(this).apply {
-            setContent {
-                QuickIMETheme {
-                    QuickImeView(
-                        context = this@QuickImeService,
-                        onKeyListener = { key -> handleKey(key) },
-                        onSuggestionListener = { index -> selectSuggestion(index) }
-                    )
-                }
-            }
-        }
+    override fun onCreateInputView(): View {
+        return createKeyboardView()
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        isComposing = false
-        currentCode.clear()
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
-        commitCurrentText()
     }
 
-    private fun handleKey(key: KeyEvent) {
+    private fun createKeyboardView(): View {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFFF5F5F5.toInt())
+            setPadding(8, 8, 8, 8)
+        }
+
+        // 候选栏
+        val candidateScroll = HorizontalScrollView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(40)
+            )
+        }
+        val candidateLayout = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        candidateScroll.addView(candidateLayout)
+        layout.addView(candidateScroll)
+
+        // 键盘行
+        val rows = listOf(
+            "QWERTYUIOP",
+            "ASDFGHJKL",
+            "ZXCVBNM⌫",
+            "空格🌐"
+        )
+
+        rows.forEach { row ->
+            val rowLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(48)
+                ).apply { topMargin = 4 }
+            }
+
+            row.forEach { char ->
+                val btn = Button(context).apply {
+                    text = char.toString()
+                    layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f)
+                    setBackgroundColor(0xFFFFFFFF.toInt())
+                    setTextColor(0xFF000000.toInt())
+                    setOnClickListener {
+                        handleKeyPress(char)
+                    }
+                }
+                rowLayout.addView(btn)
+            }
+            layout.addView(rowLayout)
+        }
+
+        return layout
+    }
+
+    private fun handleKeyPress(char: Char) {
         val connection = currentInputConnection ?: return
 
-        when (key.type) {
-            KeyType.Character -> {
-                if (key.char in 'a'..'z' || key.char in 'A'..'Z') {
-                    currentCode.append(key.char.uppercaseChar())
-                    isComposing = true
-                    updateComposingText(connection)
-                }
+        when (char) {
+            '⌫' -> {
+                connection.deleteSurroundingText(1, 0)
             }
-            KeyType.Backspace -> {
-                if (currentCode.isNotEmpty()) {
-                    currentCode.deleteCharAt(currentCode.length - 1)
-                    if (currentCode.isEmpty()) isComposing = false
-                    updateComposingText(connection)
-                }
-            }
-            KeyType.Space -> selectSuggestion(0)
-            KeyType.Enter -> {
-                commitCurrentText()
-                connection.commitText("\n", 1)
-            }
-            KeyType.SwitchKeyboard -> {
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            '🌐' -> {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.showInputMethodPicker()
             }
-        }
-    }
-
-    private fun updateComposingText(connection: android.view.inputmethod.InputConnection) {
-        if (isComposing && currentCode.isNotEmpty()) {
-            val candidates = wubiEngine.getCandidates()
-            val composingText = currentCode.toString() + " " +
-                    candidates.take(5).joinToString(" ") { it.text }
-            connection.setComposingText(composingText, 1)
-        }
-    }
-
-    private fun selectSuggestion(index: Int) {
-        val connection = currentInputConnection ?: return
-        val candidates = wubiEngine.getCandidates()
-        if (index in candidates.indices) {
-            commitText(candidates[index].text)
-            currentCode.clear()
-            isComposing = false
-        }
-    }
-
-    private fun commitCurrentText() {
-        if (isComposing && currentCode.isNotEmpty()) {
-            val candidates = wubiEngine.getCandidates()
-            if (candidates.isNotEmpty()) {
-                commitText(candidates[0].text)
-            } else {
-                commitText(currentCode.toString())
+            ' ' -> {
+                // Space
+                commitText(" ")
             }
-            currentCode.clear()
-            isComposing = false
+            else -> {
+                // 字符输入
+                commitText(char.toString())
+            }
         }
     }
 
     private fun commitText(text: String) {
         currentInputConnection?.commitText(text, 1)
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
