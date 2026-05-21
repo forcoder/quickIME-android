@@ -37,7 +37,7 @@ fun QuickImeView(
         )
         Spacer(modifier = Modifier.height(4.dp))
         KeyboardLayout(
-            onKeyPressed = { key ->
+            onPressed = { key ->
                 onKeyListener(key)
                 if (key.type == KeyType.Character) {
                     currentCode = currentCode + key.char.toString()
@@ -55,9 +55,8 @@ private fun CandidateBar(
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(4.dp)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .background(Color.White, RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         itemsIndexed(suggestions) { index, suggestion ->
             CandidateItem(
@@ -66,6 +65,7 @@ private fun CandidateBar(
                 source = suggestion.source.name,
                 onClick = { onSelected(index) }
             )
+            Spacer(modifier = Modifier.width(4.dp))
         }
     }
 }
@@ -82,69 +82,55 @@ private fun CandidateItem(
         "AIGenerated" -> Color(0xFF2196F3)
         else -> Color.Gray
     }
-    Row(
+    Surface(
         modifier = Modifier
             .background(Color(0xFFFAFAFA), RoundedCornerShape(4.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        shape = RoundedCornerShape(4.dp),
+        color = Color.Transparent
     ) {
-        Text(
-            text = "$index",
-            fontSize = 12.sp,
-            color = Color.Gray
-        )
-        Text(
-            text = text.take(20),
-            fontSize = 14.sp
-        )
-        Text(
-            text = when (source) {
-                "KnowledgeBase" -> "[知]"
-                "AIGenerated" -> "[AI]"
-                else -> ""
-            },
-            fontSize = 10.sp,
-            color = tagColor
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$index",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = text.take(20),
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = when (source) {
+                    "KnowledgeBase" -> "[知]"
+                    "AIGenerated" -> "[AI]"
+                    else -> ""
+                },
+                fontSize = 10.sp,
+                color = tagColor
+            )
+        }
     }
 }
 
 @Composable
 private fun KeyboardLayout(
-    onKeyPressed: (KeyEvent) -> Unit
+    onPressed: (KeyEvent) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            listOf('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P').forEach { char ->
-                KeyButton(
-                    char = char,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onPressed(KeyType.Character, char) }
-                )
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            listOf('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L').forEach { char ->
-                KeyButton(
-                    char = char,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onPressed(KeyType.Character, char) }
-                )
-            }
-        }
+        KeyboardRow(
+            keys = listOf('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'),
+            onPressed = onPressed
+        )
+        KeyboardRow(
+            keys = listOf('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'),
+            onPressed = onPressed
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -153,28 +139,48 @@ private fun KeyboardLayout(
                 KeyButton(
                     char = char,
                     modifier = Modifier.weight(1f),
-                    onClick = { onPressed(KeyType.Character, char) }
+                    onClick = { onPressed(KeyEvent(KeyType.Character, char) }
                 )
+                Spacer(modifier = Modifier.width(2.dp))
             }
             KeyButton(
                 char = '⌫',
                 modifier = Modifier.weight(1f),
-                onClick = { onPressed(KeyType.Backspace, ' ') }
+                onClick = { onPressed(KeyEvent(KeyType.Backspace) }
             )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             KeyButton(
                 text = "空格",
                 modifier = Modifier.weight(3f),
-                onClick = { onPressed(KeyType.Space, ' ') }
+                onClick = { onPressed(KeyEvent(KeyType.Space) }
             )
             KeyButton(
                 text = "🌐",
                 modifier = Modifier.weight(1f),
-                onClick = { onPressed(KeyType.SwitchKeyboard, ' ') }
+                onClick = { onPressed(KeyEvent(KeyType.SwitchKeyboard) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeyboardRow(
+    keys: List<Char>,
+    onPressed: (KeyEvent) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        keys.forEach { char ->
+            KeyButton(
+                char = char,
+                modifier = Modifier.weight(1f),
+                onClick = { onPressed(KeyEvent(KeyType.Character, char) }
             )
         }
     }
@@ -203,5 +209,3 @@ private fun KeyButton(
         }
     }
 }
-
-private fun onPressed(type: KeyType, char: Char): KeyEvent = KeyEvent(type, char)
