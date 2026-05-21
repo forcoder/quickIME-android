@@ -2,13 +2,12 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="com.quickime.android.ime.SettingsActivity"
     android:isDefault="false"
-    android:icon="@mipmap/ic_launcher"
-    android:showInLauncher="true">
+    android:icon="@mipmap/ic_launcher">
 
     <subtype
-        android:imeiDisplayName="@string/subtype_display_name"
-        android:imeiSubtypeLocale="zh_CN"
-        android:imeiSubtypeMode="keyboard"
-        android:imeiSubtypeExtraValue="keyboardLayoutSet=quickime" />
+        android:label="@string/subtype_display_name"
+        android:subtypeLocale="zh_CN"
+        android:subtypeMode="keyboard"
+        android:subtypeExtraValue="keyboardLayoutSet=quickime" />
 
 </input-method>
