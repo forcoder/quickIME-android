@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.quickime.android.ime.SettingsActivity"
+    android:isDefault="false"
+    android:icon="@mipmap/ic_launcher"
+    android:showInLauncher="true">
+
+    <subtype
+        android:imeiDisplayName="@string/subtype_display_name"
+        android:imeiSubtypeLocale="zh_CN"
+        android:imeiSubtypeMode="keyboard"
+        android:imeiSubtypeExtraValue="keyboardLayoutSet=quickime" />
+
+</input-method>

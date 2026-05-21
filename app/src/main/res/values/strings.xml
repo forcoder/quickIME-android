@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">QuickIME</string>
+    <string name="subtype_display_name">QuickIME 五笔</string>
+    <string name="ime_settings">输入法设置</string>
+    <string name="select_keyboard">选择键盘</string>
+    <string name="keyboard_description">QuickIME 智能五笔输入法，支持知识库和AI建议</string>
+</resources>
