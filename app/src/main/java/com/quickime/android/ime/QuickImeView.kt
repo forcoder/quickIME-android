@@ -23,7 +23,7 @@ fun QuickImeView(
     onSuggestionListener: OnSuggestionListener
 ) {
     var currentCode by remember { mutableStateOf("") }
-    var suggestions by remember { mutableStateOf<List<CSSuggestion>>(emptyList()) }
+    var suggestions by remember { mutableStateOf(emptyList<CSSuggestion>()) }
 
     Column(
         modifier = Modifier
@@ -33,11 +33,9 @@ fun QuickImeView(
     ) {
         CandidateBar(
             suggestions = suggestions,
-            onSuggestionSelected = onSuggestionListener
+            onSelected = onSuggestionListener
         )
-
         Spacer(modifier = Modifier.height(4.dp))
-
         KeyboardLayout(
             onKeyPressed = { key ->
                 onKeyListener(key)
@@ -52,12 +50,12 @@ fun QuickImeView(
 @Composable
 private fun CandidateBar(
     suggestions: List<CSSuggestion>,
-    onSuggestionSelected: OnSuggestionListener
+    onSelected: OnSuggestionListener
 ) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(4.dp))
+            .background(Color.White, RoundedCornerShape(4.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -66,7 +64,7 @@ private fun CandidateBar(
                 index = index + 1,
                 text = suggestion.text,
                 source = suggestion.source.name,
-                onClick = { onSuggestionSelected(index) }
+                onClick = { onSelected(index) }
             )
         }
     }
@@ -84,10 +82,9 @@ private fun CandidateItem(
         "AIGenerated" -> Color(0xFF2196F3)
         else -> Color.Gray
     }
-
     Row(
         modifier = Modifier
-            .background(Color(0xFFFAFAFA), RoundedCornerShape(4.dp))
+            .background(Color(0xFFFAFAFA), RoundedCornerShape(4.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -122,7 +119,6 @@ private fun KeyboardLayout(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // QWERTYUIOP
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -135,10 +131,10 @@ private fun KeyboardLayout(
                 )
             }
         }
-
-        // ASDFGHJKL
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             listOf('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L').forEach { char ->
@@ -149,8 +145,6 @@ private fun KeyboardLayout(
                 )
             }
         }
-
-        // ZXC VBNM + Backspace
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -168,8 +162,6 @@ private fun KeyboardLayout(
                 onClick = { onPressed(KeyType.Backspace, ' ') }
             )
         }
-
-        // Space + Switch
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
