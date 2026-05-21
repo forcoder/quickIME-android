@@ -7,7 +7,6 @@
     <subtype
         android:label="@string/subtype_display_name"
         android:subtypeLocale="zh_CN"
-        android:subtypeMode="keyboard"
         android:subtypeExtraValue="keyboardLayoutSet=quickime" />
 
 </input-method>
