@@ -1,10 +1,5 @@
 package com.quickime.android.ime
 
-import android.content.Context
-import android.view.LayoutInflater
-import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,21 +11,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.quickime.core.cs.CSSuggestion
 
-/**
- * QuickIME 输入法视图
- */
 @Composable
 fun QuickImeView(
-    context: Context,
+    context: android.content.Context,
     onKeyListener: OnKeyPressed,
-    onSuggestionListener: OnSuggestionSelected
+    onSuggestionListener: OnSuggestionListener
 ) {
     var currentCode by remember { mutableStateOf("") }
     var suggestions by remember { mutableStateOf<List<CSSuggestion>>(emptyList()) }
@@ -38,10 +28,9 @@ fun QuickImeView(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF5F5F5))
+            .background(Color(0xFFF5F5F5)
             .padding(4.dp)
     ) {
-        // 候选栏
         CandidateBar(
             suggestions = suggestions,
             onSuggestionSelected = onSuggestionListener
@@ -49,7 +38,6 @@ fun QuickImeView(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 键盘布局
         KeyboardLayout(
             onKeyPressed = { key ->
                 handleKeyPress(key, onKeyListener) { code ->
@@ -61,9 +49,18 @@ fun QuickImeView(
 }
 
 @Composable
+private fun handleKeyPress(
+    key: KeyEvent,
+    onKeyListener: OnKeyPressed,
+    onCodeChanged: (String) -> Unit
+) {
+    onKeyListener(key)
+}
+
+@Composable
 private fun CandidateBar(
     suggestions: List<CSSuggestion>,
-    onSuggestionSelected: (Int) -> Unit
+    onSuggestionSelected: OnSuggestionSelected
 ) {
     LazyRow(
         modifier = Modifier
@@ -130,12 +127,11 @@ private fun CandidateItem(
 private fun KeyboardLayout(
     onKeyPressed: (KeyEvent) -> Unit
 ) {
-    // 五笔键盘布局（简化版）
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // 第一行：QWERTYUIOP
+        // QWERTYUIOP
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -144,26 +140,26 @@ private fun KeyboardLayout(
                 KeyButton(
                     char = char,
                     modifier = Modifier.weight(1f),
-                    onClick = { onKeyPressed(KeyEvent(KeyType.Character, char)) }
+                    onClick = { onPressed(KeyType.Character, char) }
                 )
             }
         }
 
-        // 第二行：ASDFGHJKL
+        // ASDFGHJKL
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             listOf('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L').forEach { char ->
                 KeyButton(
                     char = char,
                     modifier = Modifier.weight(1f),
-                    onClick = { onKeyPressed(KeyEvent(KeyType.Character, char)) }
+                    onClick = { onPressed(KeyType.Character, char) }
                 )
             }
         }
 
-        // 第三行：ZXCVBNM + 退格
+        // ZXCVBNM + Backspace
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -172,18 +168,17 @@ private fun KeyboardLayout(
                 KeyButton(
                     char = char,
                     modifier = Modifier.weight(1f),
-                    onClick = { onKeyPressed(KeyEvent(KeyType.Character, char)) }
+                    onClick = { onPressed(KeyType.Character, char) }
                 )
             }
-            // 退格键
             KeyButton(
                 char = '⌫',
                 modifier = Modifier.weight(1f),
-                onClick = { onKeyPressed(KeyEvent(KeyType.Backspace)) }
+                onClick = { onPressed(KeyType.Backspace, ' ') }
             )
         }
 
-        // 第四行：空格 + 切换
+        // Space + Switch
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -191,12 +186,12 @@ private fun KeyboardLayout(
             KeyButton(
                 text = "空格",
                 modifier = Modifier.weight(3f),
-                onClick = { onKeyPressed(KeyEvent(KeyType.Space)) }
+                onClick = { onPressed(KeyType.Space, ' ') }
             )
             KeyButton(
                 text = "🌐",
                 modifier = Modifier.weight(1f),
-                onClick = { onKeyPressed(KeyEvent(KeyType.SwitchKeyboard)) }
+                onClick = { onPressed(KeyType.SwitchKeyboard, ' ') }
             )
         }
     }
@@ -226,10 +221,4 @@ private fun KeyButton(
     }
 }
 
-private fun handleKeyPress(
-    key: KeyEvent,
-    onKeyListener: OnKeyPressed,
-    onCodeChanged: (String) -> Unit
-) {
-    onKeyListener(key)
-}
+private fun onPressed(type: KeyType, char: Char): KeyEvent = KeyEvent(type, char)

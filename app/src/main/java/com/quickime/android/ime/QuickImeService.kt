@@ -1,10 +1,15 @@
 package com.quickime.android.ime
 
+import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.ComposeView
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.wubi.WubiEngine
+import com.quickime.ui.theme.QuickIMETheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,8 +43,18 @@ class QuickImeService : InputMethodService() {
         super.onDestroy()
     }
 
-    override fun onCreateInputView() = QuickImeView(this) { key ->
-        handleKey(key)
+    override fun onCreateInputView(): android.view.View {
+        return ComposeView(this).apply {
+            setContent {
+                QuickIMETheme {
+                    QuickImeView(
+                        context = this@QuickImeService,
+                        onKeyListener = { key -> handleKey(key) },
+                        onSuggestionListener = { index -> selectSuggestion(index) }
+                    )
+                }
+            }
+        }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
