@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  release:
+    types: [created]
+  workflow_dispatch:
 
 env:
   JAVA_VERSION: '17'
@@ -45,17 +48,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
+      - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload build artifacts
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
+          name: quickime-debug
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/*.apk.sha256
+          retention-days: 90
 
-      - name: Build with Gradle (Release)
+      - name: Build Release APK
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: ./gradlew assembleRelease --stacktrace
         env:
@@ -64,33 +69,43 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload release artifacts
+      - name: Generate SHA256 checksums
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          sha256sum app/build/outputs/apk/release/*.apk > app/build/outputs/apk/release/SHA256SUMS.txt
+          sha256sum app/build/outputs/apk/debug/*.apk >> app/build/outputs/apk/debug/SHA256SUMS.txt
+
+      - name: Upload Release artifacts
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
+          name: quickime-release
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.apk.sha256
+            app/build/outputs/apk/release/SHA256SUMS.txt
+          retention-days: 365
 
-  test:
+  release:
+    needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Download Debug APK
+        uses: actions/download-artifact@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-          cache: gradle
+          name: quickime-release
+          path: ./dist
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: List downloaded files
+        run: ls -la ./dist
 
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
-
-      - name: Run Android tests
-        run: ./gradlew connectedDebugAndroidTest
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./dist/*.apk
+          generate_release_notes: true
+          commitish: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

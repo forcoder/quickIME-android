@@ -2,6 +2,20 @@
 
 Android 平台的智能五笔输入法，支持知识库检索和 AI 生成建议回复。
 
+## 下载安装
+
+### GitHub Actions 自动构建
+
+每次推送到 `main` 分支会自动构建：
+
+1. 访问 [Releases](https://github.com/forcoder/quickIME/releases/latest) 下载最新 Debug APK
+2. 或访问 [Actions](https://github.com/forcoder/quickIME/actions) 查看构建历史
+3. 点击任意构建 → Artifacts → `quickime-debug` 下载
+
+### 手动安装
+
+将 APK 传输到手机，通过文件管理器安装。
+
 ## 功能特性
 
 ### 核心功能

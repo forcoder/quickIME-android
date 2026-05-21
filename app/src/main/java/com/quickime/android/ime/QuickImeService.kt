@@ -9,6 +9,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.wubi.WubiEngine
+import com.quickime.android.ime.symbol.SymbolKeyboardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,10 @@ class QuickImeService : InputMethodService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private var currentView: View? = null
+    private var isSymbolMode = false
+    private var symbolView: SymbolKeyboardView? = null
+
     override fun onCreate() {
         super.onCreate()
         scope.launch {
@@ -41,7 +46,7 @@ class QuickImeService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View {
-        return createKeyboardView()
+        return createMainKeyboardView()
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -52,7 +57,7 @@ class QuickImeService : InputMethodService() {
         super.onFinishInput()
     }
 
-    private fun createKeyboardView(): View {
+    private fun createMainKeyboardView(): View {
         val ctx = this
         val layout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -74,7 +79,7 @@ class QuickImeService : InputMethodService() {
         layout.addView(candidateScroll)
 
         // 键盘行
-        val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM⌫", "  空格  ")
+        val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM⌫", "🌐符号空格")
         rows.forEach { row ->
             val rowLayout = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -98,7 +103,35 @@ class QuickImeService : InputMethodService() {
             layout.addView(rowLayout)
         }
 
+        currentView = layout
         return layout
+    }
+
+    private fun createSymbolKeyboardView(): View {
+        val keyboard = SymbolKeyboardView(
+            ctx = this,
+            onSymbolClick = { symbol ->
+                val conn = currentInputConnection ?: return@SymbolKeyboardView
+                conn.commitText(symbol, 1)
+            },
+            onBack = {
+                // 切换回主键盘
+                switchToMainKeyboard()
+            }
+        )
+        symbolView = keyboard
+        isSymbolMode = true
+        return keyboard.createView()
+    }
+
+    private fun switchToSymbolKeyboard() {
+        setInputView(createSymbolKeyboardView())
+    }
+
+    private fun switchToMainKeyboard() {
+        isSymbolMode = false
+        symbolView = null
+        setInputView(createMainKeyboardView())
     }
 
     private fun handleKeyPress(char: Char) {
@@ -107,6 +140,7 @@ class QuickImeService : InputMethodService() {
         when (char) {
             '⌫' -> conn.deleteSurroundingText(1, 0)
             ' ' -> conn.commitText(" ", 1)
+            '🌐' -> switchToSymbolKeyboard()  // 切换到符号键盘
             else -> conn.commitText(char.toString(), 1)
         }
     }
