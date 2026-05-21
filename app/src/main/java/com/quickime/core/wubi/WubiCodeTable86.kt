@@ -48,7 +48,7 @@ object WubiCodeTable86 {
         "老" to "FT", "由" to "MH", "或" to "AK", "页" to "DMU",
         "数" to "OV", "意" to "YNCU", "只" to "KW", "主" to "Y",
         "义" to "YQ", "各" to "TK", "员" to "WJ", "立" to "U",
-        "提" to "RJ", "解" to "QE", "决" onlySupports "UN", "题" to "JQR",
+        "提" to "RJ", "解" to "QE", "决" to "UN", "题" to "JQR",
         "意" to "YNCU", "见" to "UQ", "程" to "TKGG", "规" to "FWC",
         "保" to "WK", "至" to "GCF", "作" to "WT", "业" to "OJG",
         "况" to "UKQ", "真" to "FHNU", "品" to "KKGF", "总" to "UKE",
