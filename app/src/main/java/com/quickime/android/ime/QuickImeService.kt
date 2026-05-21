@@ -1,21 +1,18 @@
 package com.quickime.android.ime
 
-import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.wubi.WubiEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -55,51 +52,45 @@ class QuickImeService : InputMethodService() {
     }
 
     private fun createKeyboardView(): View {
-        val layout = LinearLayout(this).apply {
+        val ctx = this
+        val layout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFFF5F5F5.toInt())
-            setPadding(8, 8, 8, 8)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
         }
 
         // 候选栏
-        val candidateScroll = HorizontalScrollView(context).apply {
+        val candidateScroll = HorizontalScrollView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(40)
             )
         }
-        val candidateLayout = LinearLayout(context).apply {
+        val candidateLayout = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
         }
         candidateScroll.addView(candidateLayout)
         layout.addView(candidateScroll)
 
         // 键盘行
-        val rows = listOf(
-            "QWERTYUIOP",
-            "ASDFGHJKL",
-            "ZXCVBNM⌫",
-            "空格🌐"
-        )
-
+        val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM⌫", "  空格  ")
         rows.forEach { row ->
-            val rowLayout = LinearLayout(context).apply {
+            val rowLayout = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     dp(48)
-                ).apply { topMargin = 4 }
+                ).apply {
+                    topMargin = dp(4)
+                }
             }
-
             row.forEach { char ->
-                val btn = Button(context).apply {
+                val btn = Button(ctx).apply {
                     text = char.toString()
                     layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f)
                     setBackgroundColor(0xFFFFFFFF.toInt())
                     setTextColor(0xFF000000.toInt())
-                    setOnClickListener {
-                        handleKeyPress(char)
-                    }
+                    setOnClickListener { handleKeyPress(char) }
                 }
                 rowLayout.addView(btn)
             }
@@ -110,30 +101,16 @@ class QuickImeService : InputMethodService() {
     }
 
     private fun handleKeyPress(char: Char) {
-        val connection = currentInputConnection ?: return
+        val conn = currentInputConnection ?: return
 
         when (char) {
-            '⌫' -> {
-                connection.deleteSurroundingText(1, 0)
-            }
-            '🌐' -> {
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-                imm.showInputMethodPicker()
-            }
-            ' ' -> {
-                // Space
-                commitText(" ")
-            }
-            else -> {
-                // 字符输入
-                commitText(char.toString())
-            }
+            '⌫' -> conn.deleteSurroundingText(1, 0)
+            ' ' -> conn.commitText(" ", 1)
+            else -> conn.commitText(char.toString(), 1)
         }
     }
 
-    private fun commitText(text: String) {
-        currentInputConnection?.commitText(text, 1)
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
