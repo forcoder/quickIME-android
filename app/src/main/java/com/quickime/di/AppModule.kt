@@ -8,6 +8,7 @@ import com.quickime.core.kb.KbDatabase
 import com.quickime.core.kb.KnowledgeBase
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.wubi.WubiEngine
+import com.quickime.core.pinyin.PinyinEngine
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,6 +50,12 @@ object AppModule {
     @Singleton
     fun provideWubiEngine(): WubiEngine {
         return WubiEngine()
+    }
+
+    @Provides
+    @Singleton
+    fun providePinyinEngine(): PinyinEngine {
+        return PinyinEngine()
     }
 
     @Provides

@@ -12,7 +12,10 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import com.quickime.core.cs.CustomerServiceManager
+import com.quickime.core.pinyin.PinyinEngine
 import com.quickime.core.wubi.WubiEngine
+import com.quickime.android.ime.keyboard.FullKeyboardView
+import com.quickime.android.ime.keyboard.InputMode
 import com.quickime.android.ime.persona.Persona
 import com.quickime.android.ime.persona.PersonaDefaults
 import com.quickime.android.ime.persona.PersonaManager
@@ -34,11 +37,15 @@ class QuickImeService : InputMethodService() {
     @Inject
     lateinit var csManager: CustomerServiceManager
 
+    @Inject
+    lateinit var pinyinEngine: PinyinEngine
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private var currentView: View? = null
     private var isSymbolMode = false
     private var symbolView: SymbolKeyboardView? = null
+    private var fullKeyboardView: FullKeyboardView? = null
 
     private lateinit var personaManager: PersonaManager
     private var currentPersona: Persona = PersonaDefaults.personas.first()
@@ -46,6 +53,7 @@ class QuickImeService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         personaManager = PersonaManager(this)
+        currentPersona = personaManager.getSelectedPersona()
         scope.launch {
             csManager.initialize()
         }
@@ -69,72 +77,19 @@ class QuickImeService : InputMethodService() {
     }
 
     private fun createMainKeyboardView(): View {
-        val ctx = this
-        val layout = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFFF5F5F5.toInt())
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-        }
+        fullKeyboardView = FullKeyboardView(
+            ctx = this,
+            wubiEngine = wubiEngine,
+            pinyinEngine = pinyinEngine,
+            onTextInput = { text -> commitText(text) },
+            onDelete = { deleteChar() },
+            onPersonaClick = { showPersonaSelector(findViewById(android.R.id.content)) },
+            currentPersonaName = currentPersona.name,
+            currentPersonaIcon = currentPersona.icon
+        )
 
-        // 人设 + 候选栏区域
-        val topBar = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(40)
-            )
-        }
-
-        // 人设切换按钮
-        val personaBtn = Button(ctx).apply {
-            text = "${currentPersona.icon} ${currentPersona.name}"
-            layoutParams = LinearLayout.LayoutParams(dp(100), dp(36))
-            textSize = 12f
-            setBackgroundColor(0xFF2196F3.toInt())
-            setTextColor(0xFFFFFFFF.toInt())
-            setOnClickListener { showPersonaSelector(it) }
-        }
-        topBar.addView(personaBtn)
-
-        // 候选栏
-        val candidateScroll = HorizontalScrollView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f)
-        }
-        val candidateLayout = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        candidateScroll.addView(candidateLayout)
-        topBar.addView(candidateScroll)
-
-        layout.addView(topBar)
-
-        // 键盘行
-        val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM⌫", "🌐符号 空格")
-        rows.forEach { row ->
-            val rowLayout = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(48)
-                ).apply {
-                    topMargin = dp(4)
-                }
-            }
-            row.forEach { char ->
-                val btn = Button(ctx).apply {
-                    text = char.toString()
-                    layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f)
-                    setBackgroundColor(0xFFFFFFFF.toInt())
-                    setTextColor(0xFF000000.toInt())
-                    setOnClickListener { handleKeyPress(char) }
-                }
-                rowLayout.addView(btn)
-            }
-            layout.addView(rowLayout)
-        }
-
-        currentView = layout
-        return layout
+        currentView = fullKeyboardView?.createView()
+        return currentView!!
     }
 
     private fun showPersonaSelector(anchor: View) {
@@ -229,7 +184,7 @@ class QuickImeService : InputMethodService() {
             isFocusable = true
         }
 
-        popup.showAtLocation(anchor, Gravity.BOTTOM, 0, anchor.height + dp(8))
+        popup.showAtLocation(anchor, Gravity.BOTTOM, 0, dp(56))
     }
 
     private fun selectPersona(persona: Persona) {
@@ -262,18 +217,18 @@ class QuickImeService : InputMethodService() {
     private fun switchToMainKeyboard() {
         isSymbolMode = false
         symbolView = null
+        fullKeyboardView = null
         setInputView(createMainKeyboardView())
     }
 
-    private fun handleKeyPress(char: Char) {
+    private fun commitText(text: String) {
         val conn = currentInputConnection ?: return
+        conn.commitText(text, 1)
+    }
 
-        when (char) {
-            '⌫' -> conn.deleteSurroundingText(1, 0)
-            ' ' -> conn.commitText(" ", 1)
-            '🌐' -> switchToSymbolKeyboard()
-            else -> conn.commitText(char.toString(), 1)
-        }
+    private fun deleteChar() {
+        val conn = currentInputConnection ?: return
+        conn.deleteSurroundingText(1, 0)
     }
 
     private fun dp(value: Int): Int {
