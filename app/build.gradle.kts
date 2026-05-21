@@ -29,9 +29,24 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Release signing is configured via environment variables in CI/CD
+            // For local development, use debug builds
         }
         debug {
             isMinifyEnabled = false
+            isDebuggable = true
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("release-keystore.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "quickime"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+            }
         }
     }
 
