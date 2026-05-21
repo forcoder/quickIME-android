@@ -29,7 +29,8 @@ data class CSSuggestion(
     val source: SuggestionSource,
     val confidence: Float = 0.0f,
     val category: KbCategory = KbCategory.General,
-    val aiType: AISuggestionType? = null
+    val aiType: AISuggestionType? = null,
+    val personaName: String? = null
 )
 
 /**
@@ -94,10 +95,19 @@ class CustomerServiceManager @Inject constructor(
     fun getConfig(): CSConfig = config
 
     /**
-     * 生成客服建议
+     * 生成客服建议（无指定人设）
      */
     suspend fun generateSuggestions(
         customerMessage: String,
+        maxSuggestions: Int = config.maxSuggestions
+    ): List<CSSuggestion> = generateSuggestionsWithPersona(customerMessage, null, maxSuggestions)
+
+    /**
+     * 生成客服建议（指定人设）
+     */
+    suspend fun generateSuggestionsWithPersona(
+        customerMessage: String,
+        personaName: String?,
         maxSuggestions: Int = config.maxSuggestions
     ): List<CSSuggestion> = mutex.withLock {
         if (!isReady) return emptyList()
@@ -134,8 +144,8 @@ class CustomerServiceManager @Inject constructor(
             emptyList()
         }
 
-        // 4. 合并结果
-        mergeResults(kbResults, aiResults, maxSuggestions)
+        // 4. 合并结果（添加人设标签）
+        mergeResults(kbResults, aiResults, maxSuggestions, personaName)
     }
 
     /**
@@ -198,7 +208,8 @@ class CustomerServiceManager @Inject constructor(
     private fun mergeResults(
         kbResults: List<KbResult>,
         aiResults: List<AISuggestion>,
-        maxCount: Int
+        maxCount: Int,
+        personaName: String? = null
     ): List<CSSuggestion> {
         val merged = mutableListOf<CSSuggestion>()
 
@@ -210,7 +221,8 @@ class CustomerServiceManager @Inject constructor(
                     text = result.entry.content,
                     source = SuggestionSource.KnowledgeBase,
                     confidence = result.similarity * config.kbWeight,
-                    category = result.entry.category
+                    category = result.entry.category,
+                    personaName = personaName
                 )
             )
         }
@@ -223,7 +235,8 @@ class CustomerServiceManager @Inject constructor(
                     text = result.text,
                     source = SuggestionSource.AIGenerated,
                     confidence = result.confidence * config.aiWeight,
-                    aiType = result.type
+                    aiType = result.type,
+                    personaName = personaName
                 )
             )
         }

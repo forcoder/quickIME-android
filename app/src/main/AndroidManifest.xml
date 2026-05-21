@@ -25,6 +25,12 @@
                 android:resource="@xml/method" />
         </service>
 
+        <!-- 人设编辑页面 -->
+        <activity
+            android:name=".android.ime.persona.PersonaEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.QuickIME" />
+
     </application>
 
 </manifest>
