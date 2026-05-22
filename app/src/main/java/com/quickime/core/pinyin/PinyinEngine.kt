@@ -89,10 +89,11 @@ class PinyinEngine @Inject constructor() {
         if (index < 0 || index >= page.size) return null
 
         val candidate = page[index]
+        val selectedPinyin = currentSession.pinyin
         currentSession = PinyinSession()
 
         // 更新词频
-        increaseFrequency(currentSession.pinyin, candidate.text)
+        increaseFrequency(selectedPinyin, candidate.text)
 
         return candidate.text
     }
