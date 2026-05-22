@@ -1,27 +1,22 @@
 package com.quickime.android.ime
 
-import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
-import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import com.quickime.core.cs.CustomerServiceManager
 import com.quickime.core.pinyin.PinyinEngine
-import com.quickime.core.wubi.WubiEngine
+import com.quime.core.wubi.WubiEngine
 import com.quickime.android.ime.keyboard.FullKeyboardView
-import com.quickime.android.ime.keyboard.InputMode
 import com.quickime.android.ime.persona.Persona
 import com.quickime.android.ime.persona.PersonaDefaults
-import com.quickime.android.ime.persona.PersonaEditActivity
 import com.quickime.android.ime.persona.PersonaManager
+import com.quickime.android.ime.persona.PersonaEditActivity
 import com.quickime.android.ime.symbol.SymbolKeyboardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -80,7 +75,7 @@ class QuickImeService : InputMethodService() {
     }
 
     private fun createMainKeyboardView(): View {
-        fullKeyboardView = FullKeyboardView(
+        val kb = FullKeyboardView(
             ctx = this,
             wubiEngine = wubiEngine,
             pinyinEngine = pinyinEngine,
@@ -90,49 +85,42 @@ class QuickImeService : InputMethodService() {
             currentPersonaName = currentPersona.name,
             currentPersonaIcon = currentPersona.icon
         )
-
-        currentView = fullKeyboardView?.createView()
+        fullKeyboardView = kb
+        currentView = kb.createView()
         return currentView!!
     }
 
     private fun showPersonaSelector() {
         val personas = personaManager.getAllPersonas()
+        val ctx = this
 
-        val popupView = LinearLayout(this).apply {
+        val container = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFFFFFFFF.toInt())
             setPadding(dp(16), dp(12), dp(16), dp(12))
         }
 
-        // 标题
-        val title = TextView(this).apply {
+        val title = TextView(ctx).apply {
             text = "选择人设"
             textSize = 16f
             setTextColor(0xFF333333.toInt())
             setPadding(0, 0, 0, dp(8))
         }
-        popupView.addView(title)
+        container.addView(title)
 
-        // 人设网格
-        val gridContainer = LinearLayout(this).apply {
+        val grid = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
         }
 
         val cols = 2
-        var currentRow: LinearLayout? = null
+        var row: LinearLayout? = null
 
         personas.forEachIndexed { index, persona ->
             if (index % cols == 0) {
-                currentRow = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                gridContainer.addView(currentRow)
+                row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+                grid.addView(row)
             }
-
-            val btn = Button(this).apply {
+            val btn = Button(ctx).apply {
                 text = "${persona.icon} ${persona.name}"
                 layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply {
                     marginEnd = dp(8)
@@ -140,7 +128,6 @@ class QuickImeService : InputMethodService() {
                 }
                 textSize = 14f
                 gravity = Gravity.CENTER
-
                 if (persona.id == currentPersona.id) {
                     setBackgroundColor(0xFF2196F3.toInt())
                     setTextColor(0xFFFFFFFF.toInt())
@@ -148,40 +135,35 @@ class QuickImeService : InputMethodService() {
                     setBackgroundColor(0xFFF5F5F5.toInt())
                     setTextColor(0xFF333333.toInt())
                 }
-
                 setOnClickListener {
                     selectPersona(persona)
                     popup?.dismiss()
                 }
             }
-            currentRow?.addView(btn)
+            row?.addView(btn)
         }
+        container.addView(grid)
 
-        // 自定义按钮
-        val customBtn = Button(this).apply {
+        val addBtn = Button(ctx).apply {
             text = "➕ 添加自定义人设"
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(40)
-            ).apply {
-                topMargin = dp(8)
-            }
+            ).apply { topMargin = dp(8) }
             textSize = 14f
             setBackgroundColor(0xFFE8F5E9.toInt())
             setTextColor(0xFF2E7D32.toInt())
             setOnClickListener {
-                // 打开自定义人设编辑页面
-                val intent = Intent(this@QuickImeService, PersonaEditActivity::class.java)
+                val intent = Intent(ctx, PersonaEditActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 startActivity(intent)
                 popup?.dismiss()
             }
         }
-        popupView.addView(customBtn)
-        popupView.addView(gridContainer)
+        container.addView(addBtn)
 
-        val popup = PopupWindow(
-            popupView,
+        val p = PopupWindow(
+            container,
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
             true
@@ -189,31 +171,30 @@ class QuickImeService : InputMethodService() {
             elevation = 8f
             isFocusable = true
         }
-
-        popup.showAtLocation(window?.window?.peekDecorView() ?: findViewById<View>(android.R.id.content), Gravity.BOTTOM, 0, dp(56))
+        popup = p
+        p.showAtLocation(window?.peekDecorView() ?: findViewById(android.R.id.content), Gravity.BOTTOM, 0, dp(56))
     }
+
+    private var popup: PopupWindow? = null
 
     private fun selectPersona(persona: Persona) {
         currentPersona = persona
         personaManager.setSelectedPersona(persona)
-        // 刷新键盘UI
         setInputView(createMainKeyboardView())
     }
 
     private fun createSymbolKeyboardView(): View {
-        val keyboard = SymbolKeyboardView(
+        val kb = SymbolKeyboardView(
             ctx = this,
             onSymbolClick = { symbol ->
                 val conn = currentInputConnection ?: return@SymbolKeyboardView
                 conn.commitText(symbol, 1)
             },
-            onBack = {
-                switchToMainKeyboard()
-            }
+            onBack = { switchToMainKeyboard() }
         )
-        symbolView = keyboard
+        symbolView = kb
         isSymbolMode = true
-        return keyboard.createView()
+        return kb.createView()
     }
 
     private fun switchToSymbolKeyboard() {
