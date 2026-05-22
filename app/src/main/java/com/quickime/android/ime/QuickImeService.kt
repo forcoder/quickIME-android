@@ -1,11 +1,13 @@
 package com.quickime.android.ime
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -18,6 +20,7 @@ import com.quickime.android.ime.keyboard.FullKeyboardView
 import com.quickime.android.ime.keyboard.InputMode
 import com.quickime.android.ime.persona.Persona
 import com.quickime.android.ime.persona.PersonaDefaults
+import com.quickime.android.ime.persona.PersonaEditActivity
 import com.quickime.android.ime.persona.PersonaManager
 import com.quickime.android.ime.symbol.SymbolKeyboardView
 import dagger.hilt.android.AndroidEntryPoint
@@ -83,7 +86,7 @@ class QuickImeService : InputMethodService() {
             pinyinEngine = pinyinEngine,
             onTextInput = { text -> commitText(text) },
             onDelete = { deleteChar() },
-            onPersonaClick = { showPersonaSelector(findViewById(android.R.id.content)) },
+            onPersonaClick = { showPersonaSelector() },
             currentPersonaName = currentPersona.name,
             currentPersonaIcon = currentPersona.icon
         )
@@ -92,7 +95,7 @@ class QuickImeService : InputMethodService() {
         return currentView!!
     }
 
-    private fun showPersonaSelector(anchor: View) {
+    private fun showPersonaSelector() {
         val personas = personaManager.getAllPersonas()
 
         val popupView = LinearLayout(this).apply {
@@ -122,7 +125,10 @@ class QuickImeService : InputMethodService() {
             if (index % cols == 0) {
                 currentRow = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
                 gridContainer.addView(currentRow)
             }
 
@@ -145,7 +151,7 @@ class QuickImeService : InputMethodService() {
 
                 setOnClickListener {
                     selectPersona(persona)
-                    popup.dismiss()
+                    popup?.dismiss()
                 }
             }
             currentRow?.addView(btn)
@@ -168,7 +174,7 @@ class QuickImeService : InputMethodService() {
                 val intent = Intent(this@QuickImeService, PersonaEditActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 startActivity(intent)
-                popup.dismiss()
+                popup?.dismiss()
             }
         }
         popupView.addView(customBtn)
@@ -184,7 +190,7 @@ class QuickImeService : InputMethodService() {
             isFocusable = true
         }
 
-        popup.showAtLocation(anchor, Gravity.BOTTOM, 0, dp(56))
+        popup.showAtLocation(window?.window?.peekDecorView() ?: findViewById<View>(android.R.id.content), Gravity.BOTTOM, 0, dp(56))
     }
 
     private fun selectPersona(persona: Persona) {
