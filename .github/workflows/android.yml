@@ -49,7 +49,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-build-cache --rerun-tasks
+        run: |
+          rm -rf ~/.gradle/caches/transforms-*
+          ./gradlew clean assembleDebug --rerun-tasks --no-build-cache
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
