@@ -1,14 +1,11 @@
 package com.quickime.android.ime.symbol
 
 import android.content.Context
-import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
-import com.quickime.core.wubi.WubiEngine
 
 class SymbolKeyboardView(
     private val ctx: Context,

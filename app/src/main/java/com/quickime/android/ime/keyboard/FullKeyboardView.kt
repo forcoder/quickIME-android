@@ -184,8 +184,12 @@ class FullKeyboardView(
             }
 
             for (key in row) {
+                val displayText = when (state.inputMode) {
+                    InputMode.Symbol -> key  // 符号模式直接显示
+                    else -> key.uppercase()  // 字母模式大写显示
+                }
                 val btn = Button(ctx).apply {
-                    text = key.uppercase()
+                    text = displayText
                     layoutParams = LinearLayout.LayoutParams(0, dp(42), 1f)
                     setBackgroundColor(Color.WHITE)
                     setTextColor(Color.BLACK)
@@ -312,11 +316,11 @@ class FullKeyboardView(
         val newInput = state.currentInput + key
         state = state.copy(currentInput = newInput)
 
-        // 查询五笔候选
-        val candidates = wubiEngine.getCandidates(newInput)
+        // 使用WubiEngine查询候选（需要传入编码）
+        val candidates = wubiEngine.query(newInput)
         if (candidates.isNotEmpty()) {
             state = state.copy(
-                candidates = candidates.map { Candidate(it, CandidateType.Normal) },
+                candidates = candidates.map { Candidate(it.text, CandidateType.Normal) },
                 pageIndex = 0,
                 selectedIndex = 0
             )
@@ -327,7 +331,11 @@ class FullKeyboardView(
      * 处理拼音输入
      */
     private fun handlePinyinInput(key: String) {
-        pinyinEngine.inputChar(key.first())
+        // 过滤掉非字母字符
+        val filteredKey = key.lowercase().filter { it in 'a'..'z' }
+        if (filteredKey.isEmpty()) return
+
+        pinyinEngine.inputChar(filteredKey.first())
         val session = pinyinEngine.getSession()
 
         state = state.copy(
@@ -350,8 +358,8 @@ class FullKeyboardView(
      * 处理空格
      */
     private fun handleSpace() {
-        if (state.candidates.isNotEmpty() && state.selectedIndex in 0 until state.currentPageCandidates.size) {
-            // 选择第一个候选
+        if (state.candidates.isNotEmpty()) {
+            // 选择第一个候选词
             selectCandidate(0)
         } else {
             // 输入空格
@@ -380,8 +388,8 @@ class FullKeyboardView(
 
                 // 更新候选
                 if (state.currentInput.isNotEmpty()) {
-                    val candidates = wubiEngine.getCandidates(state.currentInput)
-                    state = state.copy(candidates = candidates.map { Candidate(it) })
+                    val candidates = wubiEngine.query(state.currentInput)
+                    state = state.copy(candidates = candidates.map { Candidate(it.text) })
                 } else {
                     state = state.copy(candidates = emptyList())
                 }
