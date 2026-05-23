@@ -35,26 +35,39 @@ class SymbolKeyboardView(
             orientation = LinearLayout.HORIZONTAL
         }
 
-        val categories = SymbolData.categories
-        categories.forEachIndexed { index, category ->
+        // 显示分类：近期（有符号时）+ 其他分类
+        val displayCategories = mutableListOf<Pair<Int, String>>()
+
+        // 如果近期有符号，添加近期分类
+        if (SymbolData.recentSymbols.isNotEmpty()) {
+            displayCategories.add(Pair(0, "近期"))
+        }
+
+        // 添加所有分类
+        SymbolData.categories.forEachIndexed { index, category ->
+            displayCategories.add(Pair(index + 1, category.name))
+        }
+
+        displayCategories.forEachIndexed { displayIndex, (actualIndex, name) ->
             val btn = Button(ctx).apply {
-                text = category.name
+                text = name
                 layoutParams = LinearLayout.LayoutParams(
                     dp(64), dp(32)
                 ).apply {
                     marginEnd = dp(4)
                 }
                 setBackgroundColor(
-                    if (index == currentCategoryIndex) 0xFF2196F3.toInt()
+                    if (displayIndex == currentCategoryIndex) 0xFF2196F3.toInt()
                     else 0xFFFFFFFF.toInt()
                 )
                 setTextColor(
-                    if (index == currentCategoryIndex) 0xFFFFFFFF.toInt()
+                    if (displayIndex == currentCategoryIndex) 0xFFFFFFFF.toInt()
                     else 0xFF000000.toInt()
                 )
                 setOnClickListener {
-                    switchCategory(index)
+                    switchCategory(displayIndex)
                 }
+                tag = actualIndex // 保存实际索引
             }
             categoryLayout.addView(btn)
         }
@@ -120,8 +133,31 @@ class SymbolKeyboardView(
     private fun updateSymbols() {
         symbolContainer?.removeAllViews()
 
-        val category = SymbolData.categories.getOrNull(currentCategoryIndex) ?: return
+        // 获取分类索引（考虑是否有近期分类）
+        val hasRecent = SymbolData.recentSymbols.isNotEmpty()
+        val actualCategoryIndex = if (hasRecent && currentCategoryIndex == 0) {
+            0 // 近期分类
+        } else if (hasRecent) {
+            currentCategoryIndex // 其他分类需要减1
+        } else {
+            currentCategoryIndex // 没有近期时不需要调整
+        }
+
+        val category = SymbolData.getByIndex(actualCategoryIndex) ?: return
         val symbols = category.symbols.joinToString("")
+
+        // 如果是近期分类且为空，显示提示
+        if (symbols.isEmpty() && actualCategoryIndex == 0) {
+            val emptyText = TextView(ctx).apply {
+                text = "暂无近期符号"
+                textSize = 14f
+                setTextColor(Color.GRAY)
+                gravity = Gravity.CENTER
+                setPadding(0, dp(20), 0, 0)
+            }
+            symbolContainer?.addView(emptyText)
+            return
+        }
 
         // 2行布局显示符号
         val lineCount = (symbols.length + 9) / 10
@@ -146,7 +182,9 @@ class SymbolKeyboardView(
                     setTextColor(0xFF333333.toInt())
                     textSize = 16f
                     setOnClickListener {
-                        onSymbolClick(symbols[i].toString())
+                        val symbol = symbols[i].toString()
+                        SymbolData.onSymbolUsed(symbol) // 记录使用
+                        onSymbolClick(symbol)
                     }
                 }
                 lineLayout.addView(btn)

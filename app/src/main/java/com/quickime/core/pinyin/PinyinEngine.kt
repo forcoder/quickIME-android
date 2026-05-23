@@ -17,15 +17,27 @@ class PinyinEngine @Inject constructor() {
 
     // 模糊音配置
     private val fuzzyMap = mapOf(
+        // 翘舌音/平舌音模糊
         "zh" to setOf("z"),
         "ch" to setOf("c"),
         "sh" to setOf("s"),
+        // 前后鼻音模糊
         "an" to setOf("ang"),
         "en" to setOf("eng"),
-        "ing" to setOf("ing"),
-        "iang" to setOf("iang"),
-        "uang" to setOf("uang")
+        "in" to setOf("ing"),
+        // 撮口呼
+        "iang" to setOf("iang", "iang"),
+        "uang" to setOf("uang"),
+        // 常用声母模糊（n/l, f/h）
+        "n" to setOf("l"),
+        "l" to setOf("n"),
+        "r" to setOf("l"),
+        "f" to setOf("h"),
+        "h" to setOf("f")
     )
+
+    // 错别字纠错前缀映射
+    private val typoPrefixes = listOf("ji", "bu", "ni", "wo", "hen", "zen", "me", "na", "nei", "zen")
 
     /**
      * 获取当前会话
@@ -225,4 +237,43 @@ class PinyinEngine @Inject constructor() {
      * 是否有候选项
      */
     fun hasCandidates(): Boolean = currentSession.candidates.isNotEmpty()
+
+    /**
+     * 生成模糊变体
+     * 例如: "zhong" -> ["zhong", "zong"]
+     */
+    private fun generateFuzzyVariants(pinyin: String): Set<String> {
+        val variants = mutableSetOf(pinyin)
+
+        // 检查声母模糊
+        for ((key, alternatives) in fuzzyMap) {
+            if (pinyin.startsWith(key)) {
+                for (alt in alternatives) {
+                    variants.add(alt + pinyin.substring(key.length))
+                }
+            }
+            // 检查韵母模糊
+            if (pinyin.endsWith(key)) {
+                for (alt in alternatives) {
+                    variants.add(pinyin.dropLast(key.length) + alt)
+                }
+            }
+        }
+
+        return variants
+    }
+
+    /**
+     * 模糊匹配拼音
+     */
+    fun fuzzyMatch(input: String): List<String> {
+        val variants = generateFuzzyVariants(input)
+        val results = mutableListOf<String>()
+
+        for (variant in variants) {
+            results.addAll(PinyinTable.fuzzyMatch(variant))
+        }
+
+        return results.distinct()
+    }
 }

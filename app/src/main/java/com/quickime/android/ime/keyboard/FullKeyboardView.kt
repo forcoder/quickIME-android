@@ -113,26 +113,29 @@ class FullKeyboardView(
         // 候选词
         state.currentPageCandidates.forEachIndexed { index, candidate ->
             val btn = Button(ctx).apply {
-                text = candidate.text
-                layoutParams = LinearLayout.LayoutParams(dp(48), dp(32))
+                // 显示序号：1-9 直接选字
+                val numberPrefix = if (index < 9) "${index + 1} " else ""
+                text = "$numberPrefix${candidate.text}"
+                layoutParams = LinearLayout.LayoutParams(dp(56), dp(32))
                 textSize = 14f
 
-                // 显示序号
-                val numberBg = if (index < 9) "${index + 1} " else ""
-                text = "$numberBg${candidate.text}"
-
-                setBackgroundColor(Color.WHITE)
-                setTextColor(Color.BLACK)
-
-                // 标记不同类型的候选
-                when (candidate.type) {
-                    CandidateType.Knowledge -> setTextColor(Color.parseColor("#4CAF50"))
-                    CandidateType.AI -> setTextColor(Color.parseColor("#2196F3"))
-                    CandidateType.Pinyin -> setTextColor(Color.parseColor("#9E9E9E"))
-                    else -> {}
+                // 高亮当前选中项
+                val isSelected = index == state.selectedIndex
+                if (isSelected) {
+                    setBackgroundColor(0xFF2196F3.toInt())
+                    setTextColor(Color.WHITE)
+                } else {
+                    setBackgroundColor(Color.WHITE)
+                    // 不同类型候选不同颜色
+                    when (candidate.type) {
+                        CandidateType.Knowledge -> setTextColor(Color.parseColor("#4CAF50"))
+                        CandidateType.AI -> setTextColor(Color.parseColor("#2196F3"))
+                        CandidateType.Pinyin -> setTextColor(Color.parseColor("#9E9E9E"))
+                        else -> setTextColor(Color.BLACK)
+                    }
                 }
 
-                setOnClickListener { selectCandidate(index) }
+                setOnClickListener { selectCandidateInternal(index) }
             }
             candidateLayout.addView(btn)
         }
@@ -306,7 +309,7 @@ class FullKeyboardView(
             InputMode.Pinyin -> handlePinyinInput(key)
             InputMode.Symbol -> handleSymbolInput(key)
         }
-        refreshView()
+        refreshViewPreserveState()
     }
 
     /**
@@ -360,7 +363,7 @@ class FullKeyboardView(
     private fun handleSpace() {
         if (state.candidates.isNotEmpty()) {
             // 选择第一个候选词
-            selectCandidate(0)
+            selectCandidateInternal(0)
         } else {
             // 输入空格
             onTextInput(" ")
@@ -394,6 +397,7 @@ class FullKeyboardView(
                     state = state.copy(candidates = emptyList())
                 }
             }
+            refreshViewPreserveState()
         } else {
             onDelete()
         }
@@ -434,9 +438,9 @@ class FullKeyboardView(
     }
 
     /**
-     * 选择候选词
+     * 选择候选词（内部方法）
      */
-    private fun selectCandidate(index: Int) {
+    private fun selectCandidateInternal(index: Int) {
         if (index < 0 || index >= state.currentPageCandidates.size) return
 
         val candidate = state.currentPageCandidates[index]
@@ -445,39 +449,66 @@ class FullKeyboardView(
     }
 
     /**
+     * 公开的选择方法（供 QuickImeService 调用）
+     */
+    fun selectCandidate(index: Int) {
+        selectCandidateInternal(index)
+    }
+
+    /**
      * 上一页
      */
     private fun prevPage() {
-        if (state.inputMode == InputMode.Pinyin) {
-            pinyinEngine.prevPage()
-            val session = pinyinEngine.getSession()
-            state = state.copy(
-                pageIndex = session.pageIndex,
-                candidates = session.currentPageCandidates.map {
-                    Candidate(it.text, CandidateType.Pinyin, it.fullPinyin)
+        when (state.inputMode) {
+            InputMode.Pinyin -> {
+                pinyinEngine.prevPage()
+                val session = pinyinEngine.getSession()
+                state = state.copy(
+                    pageIndex = session.pageIndex,
+                    currentInput = session.pinyin,
+                    candidates = session.currentPageCandidates.map {
+                        Candidate(it.text, CandidateType.Pinyin, it.fullPinyin)
+                    }
+                )
+            }
+            InputMode.WuBi -> {
+                if (state.pageIndex > 0) {
+                    state = state.copy(pageIndex = state.pageIndex - 1)
                 }
-            )
-        } else {
-            state = state.copy(pageIndex = state.pageIndex - 1)
+            }
+            InputMode.Symbol -> {
+                // 符号模式不支持翻页
+            }
         }
+        refreshViewPreserveState()
     }
 
     /**
      * 下一页
      */
     private fun nextPage() {
-        if (state.inputMode == InputMode.Pinyin) {
-            pinyinEngine.nextPage()
-            val session = pinyinEngine.getSession()
-            state = state.copy(
-                pageIndex = session.pageIndex,
-                candidates = session.currentPageCandidates.map {
-                    Candidate(it.text, CandidateType.Pinyin, it.fullPinyin)
+        when (state.inputMode) {
+            InputMode.Pinyin -> {
+                pinyinEngine.nextPage()
+                val session = pinyinEngine.getSession()
+                state = state.copy(
+                    pageIndex = session.pageIndex,
+                    currentInput = session.pinyin,
+                    candidates = session.currentPageCandidates.map {
+                        Candidate(it.text, CandidateType.Pinyin, it.fullPinyin)
+                    }
+                )
+            }
+            InputMode.WuBi -> {
+                if ((state.pageIndex + 1) * state.pageSize < state.candidates.size) {
+                    state = state.copy(pageIndex = state.pageIndex + 1)
                 }
-            )
-        } else {
-            state = state.copy(pageIndex = state.pageIndex + 1)
+            }
+            InputMode.Symbol -> {
+                // 符号模式不支持翻页
+            }
         }
+        refreshViewPreserveState()
     }
 
     /**
@@ -500,15 +531,28 @@ class FullKeyboardView(
     }
 
     /**
-     * 刷新视图
+     * 刷新视图（带状态更新）
      */
     private fun refreshView() {
+        rootView?.let { view ->
+            val newView = createView()
+            newView.tag = "refreshed"
+        }
+    }
+
+    /**
+     * 刷新视图（保留状态）
+     */
+    private fun refreshViewPreserveState() {
+        // 重新创建视图但保持状态
+        val currentState = state
         rootView?.let { view ->
             val parent = view.parent as? android.view.ViewGroup ?: return
             val index = parent.indexOfChild(view)
             parent.removeView(view)
 
             val newView = createView()
+            state = currentState // 恢复状态
             parent.addView(newView, index)
         }
     }

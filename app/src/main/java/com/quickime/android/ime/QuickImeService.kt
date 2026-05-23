@@ -177,6 +177,50 @@ class QuickImeService : InputMethodService() {
 
     private var popup: PopupWindow? = null
 
+    /**
+     * 选择候选词
+     */
+    fun selectCandidate(index: Int) {
+        fullKeyboardView?.let { kb ->
+            val state = kb.getState()
+            if (index in state.currentPageCandidates.indices) {
+                val candidate = state.currentPageCandidates[index]
+                commitText(candidate.text)
+                kb.setState(state.copy(
+                    currentInput = "",
+                    candidates = emptyList(),
+                    pageIndex = 0,
+                    selectedIndex = 0
+                ))
+                return
+            }
+        }
+
+        // 如果是数字键选字（index 0-8 对应数字键 1-9）
+        if (index in 0..8) {
+            symbolView?.let { return }
+        }
+    }
+
+    /**
+     * 处理数字键输入（1-9 直接选候选）
+     */
+    fun handleNumberKey(number: Int): Boolean {
+        if (number < 1 || number > 9) return false
+
+        fullKeyboardView?.let { kb ->
+            val state = kb.getState()
+            if (state.candidates.isNotEmpty()) {
+                val index = number - 1 // 数字键 1 对应 index 0
+                if (index in state.currentPageCandidates.indices) {
+                    selectCandidate(index)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     private fun selectPersona(persona: Persona) {
         currentPersona = persona
         personaManager.setSelectedPersona(persona)
